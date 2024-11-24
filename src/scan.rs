@@ -1,7 +1,7 @@
 use std::io;
 use std::io::BufRead;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     PLUS,
     MINUS,
@@ -10,7 +10,7 @@ pub enum Token {
     INT(i32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TokenError {
     line: usize,
     column: usize,
@@ -248,7 +248,10 @@ mod tests {
         assert_eq!(tokens.len(), 3);
 
         assert!(matches!(tokens[0], Ok(Token::INT(1))));
-        assert!(matches!(tokens[1], Err(_)));
+        assert_eq!(
+            tokens[1].clone().err().unwrap(),
+            TokenError { line: 1, column: 2, character: '@' }
+        );
         assert!(matches!(tokens[2], Ok(Token::INT(2))));
     }
 
@@ -273,7 +276,7 @@ mod tests {
 
     #[test]
     fn test_scan_file_with_errors() {
-        let input = "1 + 2\n3 @ 4\n";
+        let input = "1 + 2\n3   @ 4\n";
         let mut reader = create_reader(input);
 
         let result = scan_file(&mut reader).unwrap();
@@ -285,7 +288,10 @@ mod tests {
 
         // Check second line - should have an error
         assert!(matches!(result[3], Ok(Token::INT(3))));
-        assert!(matches!(result[4], Err(_)));
+        assert_eq!(
+            result[4].clone().err().unwrap(),
+            TokenError { line: 2, column: 4, character: '@' }
+        );
         assert!(matches!(result[5], Ok(Token::INT(4))));
     }
 
