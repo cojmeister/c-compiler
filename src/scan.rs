@@ -1,7 +1,7 @@
 use std::io;
 use std::io::BufRead;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Token {
     PLUS,
     MINUS,
@@ -190,6 +190,14 @@ mod tests {
         } else {
             panic!("Failed to parse multi-digit integer");
         }
+    }
+
+    #[test]
+    fn scan_token_int() {
+        // Test multi-digit number
+        let mut chars = "023".chars().enumerate().peekable();
+        let token = scan_token('1', &mut chars, 1, 0);
+        assert_eq!(token.unwrap(), Token::INT(1023));
     }
 
     #[test]
