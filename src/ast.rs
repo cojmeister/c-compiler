@@ -3,13 +3,14 @@ use std::iter::Peekable;
 use std::vec::IntoIter;
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct ASTNode {
     operation: Token,
     left: Option<Box<ASTNode>>,
     right: Option<Box<ASTNode>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ASTError {
     UnexpectedToken(Token),
     LexicalError(TokenError),
@@ -31,7 +32,32 @@ impl ASTNode {
         }
     }
 
-    pub fn make_leaf(operation: Token) -> Result<Self, ASTError> {
+    /// Make a leaf node (end node)
+    ///
+    /// # Arguments
+    ///
+    /// * `operation`: Has to be [`crate::scan::Token::INT`] otherwise will return [ASTError]
+    ///
+    /// returns: Result<ASTNode, ASTError>
+    ///
+    /// # Examples
+    /// Given a non int token will return Err
+    /// ```
+    /// let leaf = ASTNode::make_leaf(Token::SLASH);
+    /// assert_eq!(actual, Err(ASTError::InvalidLeafNode));
+    /// ```
+    ///
+    /// Otherwise, it will return an Ok node
+    /// ```
+    /// let leaf = ASTNode::make_leaf(Token::INT(4));
+    /// assert_eq!(leaf, Ok(ASTNode {
+    ///     operation: Token::INT(4),
+    ///     left: None,
+    ///     right: None,
+    /// }));
+    ///
+    /// ```
+    fn make_leaf(operation: Token) -> Result<Self, ASTError> {
         match operation {
             Token::INT(_) => Ok(Self {
                 operation,
@@ -42,15 +68,7 @@ impl ASTNode {
         }
     }
 
-    pub fn make_unary(operation: Token, left: Box<ASTNode>) -> Self {
-        Self {
-            operation,
-            left: Some(left),
-            right: None,
-        }
-    }
-
-    // Gets operator precedence - higher means higher precedence
+    /// Gets operator precedence - higher means higher precedence
     fn get_precedence(token: &Token) -> u8 {
         match token {
             Token::PLUS | Token::MINUS => 1,
@@ -59,7 +77,13 @@ impl ASTNode {
         }
     }
 
-    // Parse a primary factor (numbers or parenthesized expressions)
+    /// Parse a primary factor (numbers or parenthesized expressions)
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens`: a vector of Result<[crate::Token], [crate::TokenError]>
+    ///
+    /// returns: Result<ASTNode, ASTError>
     fn parse_primary(tokens: &mut Peekable<IntoIter<Result<Token, TokenError>>>) -> Result<Self, ASTError> {
         match tokens.next() {
             Some(Ok(Token::INT(n))) => Self::make_leaf(Token::INT(n)),
@@ -70,7 +94,14 @@ impl ASTNode {
     }
 
 
-    // Parse a binary expression with operator precedence
+    /// Parse a binary expression with operator precedence
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens`: a peekable iterable of results of the token, as gotten from the scanner [`crate::scan_file`]
+    /// * `min_precedence`: to be set to 0 in the call
+    ///
+    /// returns: Result<ASTNode, ASTError>
     fn parse_expression(
         tokens: &mut Peekable<IntoIter<Result<Token, TokenError>>>,
         min_precedence: u8,
@@ -103,7 +134,25 @@ impl ASTNode {
         Ok(left)
     }
 
-    // Main entry point for parsing
+    /// Main entry point for parsing
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens`: a vector of token results, as received from the scanner
+    ///
+    /// returns: Result<ASTNode, ASTError>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tokens = vec![
+    ///     Ok(Token::INT(5)),
+    ///     Ok(Token::PLUS),
+    ///     Ok(Token::INT(5)),
+    /// ];
+    /// let ast = ASTNode::parse(tokens).unwrap();
+    /// assert_eq!(ast.evaluate().unwrap(), 10);
+    /// ```
     pub fn parse(tokens: Vec<Result<Token, TokenError>>) -> Result<Self, ASTError> {
         if tokens.is_empty() {
             return Err(ASTError::EmptyExpression);
@@ -113,8 +162,10 @@ impl ASTNode {
         Self::parse_expression(&mut token_iter, 0)
     }
 
-    // Helper method to evaluate the AST (for testing)
-    fn evaluate(&self) -> Result<i32, ASTError> {
+    /// ## *For testing only!*
+    /// Helper method to evaluate the AST (for testing)
+    /// Will evaluate the AST
+    pub fn evaluate(&self) -> Result<i32, ASTError> {
         match &self.operation {
             Token::INT(n) => Ok(*n),
             Token::PLUS => {
@@ -209,5 +260,22 @@ mod tests {
             Ok(Token::INT(5)),
         ];
         assert!(matches!(ASTNode::parse(tokens), Err(_)));
+    }
+
+    #[test]
+    fn test_make_leaf_returns_error() {
+        let token = Token::SLASH;
+        let actual = ASTNode::make_leaf(token);
+        assert_eq!(actual, Err(ASTError::InvalidLeafNode));
+    }
+
+    #[test]
+    fn test_make_leaf_returns_leaf() {
+        let leaf = ASTNode::make_leaf(Token::INT(4));
+        assert_eq!(leaf, Ok(ASTNode {
+            operation: Token::INT(4),
+            left: None,
+            right: None,
+        }));
     }
 }
