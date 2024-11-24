@@ -69,11 +69,12 @@ impl ASTNode {
     }
 
     /// Gets operator precedence - higher means higher precedence
-    fn get_precedence(token: &Token) -> u8 {
+    fn get_precedence(token: &Token) -> Result<u8, ASTError> {
         match token {
-            Token::PLUS | Token::MINUS => 1,
-            Token::ASTERISK | Token::SLASH => 2,
-            _ => 0,
+            Token::PLUS | Token::MINUS => Ok(1),
+            Token::ASTERISK | Token::SLASH => Ok(2),
+            Token::EndOfLine | Token::EndOfFile => Err(ASTError::ExpectedOperator),
+            _ => Ok(0),
         }
     }
 
@@ -102,14 +103,17 @@ impl ASTNode {
     /// * `min_precedence`: to be set to 0 in the call
     ///
     /// returns: Result<ASTNode, ASTError>
-    fn parse_expression(
+    fn parse_one_line_expression(
         tokens: &mut Peekable<IntoIter<Result<Token, TokenError>>>,
         min_precedence: u8,
     ) -> Result<Self, ASTError> {
         let mut left: ASTNode = Self::parse_primary(tokens)?;
 
         while let Some(Ok(op)) = tokens.peek().cloned() {
-            let precedence = Self::get_precedence(&op);
+            let precedence = match Self::get_precedence(&op) {
+                Ok(precedence) => precedence,
+                Err(_) => break,
+            };
 
             if precedence < min_precedence {
                 break;
@@ -122,7 +126,7 @@ impl ASTNode {
                 None => return Err(ASTError::ExpectedOperator),
             }
 
-            let right: ASTNode = Self::parse_expression(tokens, precedence + 1)?;
+            let right: ASTNode = Self::parse_one_line_expression(tokens, precedence + 1)?;
             left = Self::new(Ok(op), Box::new(left), Box::new(right))?;
         }
 
@@ -159,7 +163,7 @@ impl ASTNode {
         }
 
         let mut token_iter = tokens.into_iter().peekable();
-        Self::parse_expression(&mut token_iter, 0)
+        Self::parse_one_line_expression(&mut token_iter, 0)
     }
 
     /// ## *For testing only!*
