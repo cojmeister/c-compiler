@@ -8,13 +8,15 @@ pub enum Token {
     ASTERISK,
     SLASH,
     INT(i32),
+    EndOfFile,
+    EndOfLine
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TokenError {
-    line: usize,
-    column: usize,
-    character: char,
+    pub(crate) line: usize,
+    pub(crate) column: usize,
+    pub(crate) character: char,
 }
 
 
@@ -35,7 +37,7 @@ pub fn scan_file<R: BufRead>(reader: &mut R) -> io::Result<Vec<Result<Token, Tok
         tokens.extend(line_tokens);
         line_num += 1;
     }
-
+    tokens.push(Ok(Token::EndOfFile));
     Ok(tokens)
 }
 
@@ -68,6 +70,7 @@ pub fn scan_line(line: &str, line_num: usize) -> Vec<Result<Token, TokenError>> 
         let token_result = scan_token(ch, &mut chars, line_num, column);
         tokens.push(token_result);
     }
+    tokens.push(Ok(Token::EndOfLine));
     tokens
 }
 
@@ -215,7 +218,7 @@ mod tests {
     #[test]
     fn test_scan_line_simple() {
         let tokens = scan_line("1 + 2", 1);
-        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens.len(), 4);
 
         assert!(matches!(tokens[0], Ok(Token::INT(1))));
         assert!(matches!(tokens[1], Ok(Token::PLUS)));
@@ -225,7 +228,7 @@ mod tests {
     #[test]
     fn test_scan_line_with_whitespace() {
         let tokens = scan_line("   42    *    5   ", 1);
-        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens.len(), 4);
 
         assert!(matches!(tokens[0], Ok(Token::INT(42))));
         assert!(matches!(tokens[1], Ok(Token::ASTERISK)));
@@ -235,7 +238,7 @@ mod tests {
     #[test]
     fn test_scan_line_many_operations() {
         let tokens = scan_line("1+3-5*44/6+4", 1);
-        assert_eq!(tokens.len(), 11);
+        assert_eq!(tokens.len(), 12);
 
         assert!(matches!(tokens[0], Ok(Token::INT(1))));
         assert!(matches!(tokens[1], Ok(Token::PLUS)));
@@ -253,7 +256,7 @@ mod tests {
     #[test]
     fn test_scan_line_with_error() {
         let tokens = scan_line("1 @ 2", 1);
-        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens.len(), 4);
 
         assert!(matches!(tokens[0], Ok(Token::INT(1))));
         assert_eq!(
@@ -269,7 +272,7 @@ mod tests {
         let mut reader = create_reader(input);
 
         let result = scan_file(&mut reader).unwrap();
-        assert_eq!(result.len(), 6);
+        assert_eq!(result.len(), 9);
 
         // First line
         assert!(matches!(result[0], Ok(Token::INT(1))));
@@ -277,9 +280,10 @@ mod tests {
         assert!(matches!(result[2], Ok(Token::INT(2))));
 
         // Second line
-        assert!(matches!(result[3], Ok(Token::INT(3))));
-        assert!(matches!(result[4], Ok(Token::ASTERISK)));
-        assert!(matches!(result[5], Ok(Token::INT(4))));
+        assert!(matches!(result[3], Ok(Token::EndOfLine)));
+        assert!(matches!(result[4], Ok(Token::INT(3))));
+        assert!(matches!(result[5], Ok(Token::ASTERISK)));
+        assert!(matches!(result[6], Ok(Token::INT(4))));
     }
 
     #[test]
@@ -295,12 +299,14 @@ mod tests {
         assert!(matches!(result[2], Ok(Token::INT(2))));
 
         // Check second line - should have an error
-        assert!(matches!(result[3], Ok(Token::INT(3))));
+        assert!(matches!(result[4], Ok(Token::INT(3))));
         assert_eq!(
-            result[4].clone().err().unwrap(),
+            result[5].clone().err().unwrap(),
             TokenError { line: 2, column: 4, character: '@' }
         );
-        assert!(matches!(result[5], Ok(Token::INT(4))));
+        assert!(matches!(result[6], Ok(Token::INT(4))));
+        assert!(matches!(result[7], Ok(Token::EndOfLine)));
+        assert!(matches!(result[8], Ok(Token::EndOfFile)));
     }
 
     #[test]
@@ -309,7 +315,8 @@ mod tests {
         let mut reader = create_reader(input);
 
         let result = scan_file(&mut reader).unwrap();
-        assert!(result.is_empty());
+        assert_eq!(result[0], Ok(Token::EndOfFile));
+        assert_eq!(result.len(), 1);
     }
 
     #[test]
@@ -318,6 +325,10 @@ mod tests {
         let mut reader = create_reader(input);
 
         let result = scan_file(&mut reader).unwrap();
-        assert!(result.is_empty());
+        assert_eq!(result[0], Ok(Token::EndOfLine));
+        assert_eq!(result[1], Ok(Token::EndOfLine));
+        assert_eq!(result[2], Ok(Token::EndOfLine));
+        assert_eq!(result[3], Ok(Token::EndOfFile));
+        assert_eq!(result.len(), 4);
     }
 }
