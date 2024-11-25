@@ -2,12 +2,12 @@ use crate::scan::{Token, TokenError};
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[derive(PartialEq)]
 pub struct ASTNode {
-    operation: Token,
-    left: Option<Box<ASTNode>>,
-    right: Option<Box<ASTNode>>,
+    pub operation: Token,
+    pub(crate) left: Option<Box<ASTNode>>,
+    pub(crate) right: Option<Box<ASTNode>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -155,7 +155,7 @@ impl ASTNode {
     ///     Ok(Token::INT(5)),
     /// ];
     /// let ast = ASTNode::parse(tokens).unwrap();
-    /// assert_eq!(ast.evaluate().unwrap(), 10);
+    /// assert_eq!(ast.test_evaluate().unwrap(), 10);
     /// ```
     pub fn parse(tokens: Vec<Result<Token, TokenError>>) -> Result<Self, ASTError> {
         if tokens.is_empty() {
@@ -167,29 +167,29 @@ impl ASTNode {
     }
 
     /// ## *For testing only!*
-    /// Helper method to evaluate the AST (for testing)
-    /// Will evaluate the AST
-    pub fn evaluate(&self) -> Result<i32, ASTError> {
+    /// Helper method to test_evaluate the AST (for testing)
+    /// Will test_evaluate the AST
+    pub(crate) fn test_evaluate(&self) -> Result<i32, ASTError> {
         match &self.operation {
             Token::INT(n) => Ok(*n),
             Token::PLUS => {
-                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
-                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
+                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
+                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
                 Ok(left + right)
             }
             Token::MINUS => {
-                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
-                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
+                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
+                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
                 Ok(left - right)
             }
             Token::ASTERISK => {
-                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
-                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
+                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
+                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
                 Ok(left * right)
             }
             Token::SLASH => {
-                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
-                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.evaluate()?;
+                let left = self.left.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
+                let right = self.right.as_ref().ok_or(ASTError::ExpectedInteger)?.test_evaluate()?;
                 if right == 0 {
                     Err(ASTError::ExpectedInteger) // Should be a division by zero error
                 } else {
@@ -217,7 +217,7 @@ mod tests {
         ];
 
         let ast = ASTNode::parse(tokens).unwrap();
-        assert_eq!(ast.evaluate().unwrap(), 8);
+        assert_eq!(ast.test_evaluate().unwrap(), 8);
     }
 
     #[test]
@@ -231,7 +231,7 @@ mod tests {
         ];
 
         let ast = ASTNode::parse(tokens).unwrap();
-        assert_eq!(ast.evaluate().unwrap(), 14);
+        assert_eq!(ast.test_evaluate().unwrap(), 14);
     }
 
     #[test]
