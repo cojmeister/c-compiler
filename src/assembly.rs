@@ -1,5 +1,7 @@
 use crate::ast::ASTNode;
 use std::io::{BufWriter, Result as IoResult, Write};
+use crate::scan::Token;
+
 pub mod assembly_writer_arm64;
 
 pub enum SupportedArchitectures {
@@ -33,5 +35,54 @@ trait WriteAssembly {
     fn subtract_registers(&mut self, reg_1: RegisterList, reg_2: RegisterList) -> IoResult<RegisterList>;
     fn multiply_registers(&mut self, reg_1: RegisterList, reg_2: RegisterList) -> IoResult<RegisterList>;
     fn divide_registers(&mut self, reg_1: RegisterList, reg_2: RegisterList) -> IoResult<RegisterList>;
-    fn generate_assembly_from_ast(&mut self, node: &ASTNode) -> IoResult<RegisterList>;
+    fn generate_assembly_from_ast(&mut self, node: &ASTNode) -> IoResult<RegisterList> {
+        match node.operation {
+            Token::INT(n) => {
+                Ok(self.load_register(n)?)
+            }
+            Token::PLUS => {
+                // Recursively generate assembly for left and right subtrees
+                let left_reg = self.generate_assembly_from_ast(
+                    node.left.as_ref().expect("Missing left operand")
+                )?;
+                let right_reg = self.generate_assembly_from_ast(
+                    node.right.as_ref().expect("Missing right operand")
+                )?;
+
+                // Perform addition
+                Ok(self.add_registers(left_reg, right_reg)?)
+            }
+            Token::MINUS => {
+                let left_reg = self.generate_assembly_from_ast(
+                    node.left.as_ref().expect("Missing left operand")
+                )?;
+                let right_reg = self.generate_assembly_from_ast(
+                    node.right.as_ref().expect("Missing right operand")
+                )?;
+                self.subtract_registers(left_reg, right_reg)
+            }
+            Token::ASTERISK => {
+                let left_reg = self.generate_assembly_from_ast(
+                    node.left.as_ref().expect("Missing left operand")
+                )?;
+                let right_reg = self.generate_assembly_from_ast(
+                    node.right.as_ref().expect("Missing right operand")
+                )?;
+                self.multiply_registers(left_reg, right_reg)
+            }
+            Token::SLASH => {
+                let left_reg = self.generate_assembly_from_ast(
+                    node.left.as_ref().expect("Missing left operand")
+                )?;
+                let right_reg = self.generate_assembly_from_ast(
+                    node.right.as_ref().expect("Missing right operand")
+                )?;
+                self.divide_registers(left_reg, right_reg)
+            }
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Unsupported or invalid operation",
+            )),
+        }
+    }
 }

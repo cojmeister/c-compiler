@@ -43,8 +43,8 @@ impl ASTNode {
     /// # Examples
     /// Given a non int token will return Err
     /// ```
-    /// let leaf = ASTNode::make_leaf(Token::SLASH);
-    /// assert_eq!(actual, Err(ASTError::InvalidLeafNode));
+    /// let leaf = crate::ast::ASTNode::make_leaf(Token::SLASH);
+    /// assert_eq!(leaf, Err(ASTError::InvalidLeafNode));
     /// ```
     ///
     /// Otherwise, it will return an Ok node

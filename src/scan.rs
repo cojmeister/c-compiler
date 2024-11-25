@@ -54,9 +54,10 @@ pub fn scan_file<R: BufRead>(reader: &mut R) -> io::Result<Vec<Result<Token, Tok
 /// # Examples
 ///
 /// ```
+/// # use compiler::scan::*;
 /// let line: &str = "10 + 9 * 6";
 /// let tokens = scan_line(line, 0);
-/// assert!(tokens.len() == 5);
+/// assert_eq!(tokens.len(), 6);
 /// ```
 pub fn scan_line(line: &str, line_num: usize) -> Vec<Result<Token, TokenError>> {
     let mut tokens = Vec::new();
@@ -89,10 +90,11 @@ pub fn scan_line(line: &str, line_num: usize) -> Vec<Result<Token, TokenError>> 
 /// # Examples
 ///
 /// ```
-/// let mut peekable_chars = "-123".chars().peekable();
+/// # use compiler::scan::*;
+/// let mut peekable_chars = "-123".chars().enumerate().peekable();
 /// let current_char = '-';
-/// let token = scan_token(current_char, peekable_chars, 0, 0).unwrap();
-/// assert!(token== Token::MINUS);
+/// let token = scan_token(current_char, &mut peekable_chars, 0, 0).unwrap();
+/// assert_eq!(token, Token::MINUS);
 /// ```
 pub fn scan_token(
     current_char: char,

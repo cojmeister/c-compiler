@@ -1,6 +1,5 @@
 use crate::assembly::{AssemblyWriter, RegisterList, SupportedArchitectures, WriteAssembly};
 use crate::ast::ASTNode;
-use crate::scan::Token;
 use std::io::{BufWriter, Result as IoResult, Write};
 
 // ARM64-specific implementation
@@ -134,57 +133,6 @@ impl<W: std::io::Write> WriteAssembly for ARM64Writer<W> {
         self.free_register(reg_2);
         Ok(result_reg)
     }
-
-    fn generate_assembly_from_ast(&mut self, node: &ASTNode) -> IoResult<RegisterList> {
-        match node.operation {
-            Token::INT(n) => {
-                Ok(self.load_register(n)?)
-            }
-            Token::PLUS => {
-                // Recursively generate assembly for left and right subtrees
-                let left_reg = self.generate_assembly_from_ast(
-                    node.left.as_ref().expect("Missing left operand")
-                )?;
-                let right_reg = self.generate_assembly_from_ast(
-                    node.right.as_ref().expect("Missing right operand")
-                )?;
-
-                // Perform addition
-                Ok(self.add_registers(left_reg, right_reg)?)
-            }
-            Token::MINUS => {
-                let left_reg = self.generate_assembly_from_ast(
-                    node.left.as_ref().expect("Missing left operand")
-                )?;
-                let right_reg = self.generate_assembly_from_ast(
-                    node.right.as_ref().expect("Missing right operand")
-                )?;
-                self.subtract_registers(left_reg, right_reg)
-            }
-            Token::ASTERISK => {
-                let left_reg = self.generate_assembly_from_ast(
-                    node.left.as_ref().expect("Missing left operand")
-                )?;
-                let right_reg = self.generate_assembly_from_ast(
-                    node.right.as_ref().expect("Missing right operand")
-                )?;
-                self.multiply_registers(left_reg, right_reg)
-            }
-            Token::SLASH => {
-                let left_reg = self.generate_assembly_from_ast(
-                    node.left.as_ref().expect("Missing left operand")
-                )?;
-                let right_reg = self.generate_assembly_from_ast(
-                    node.right.as_ref().expect("Missing right operand")
-                )?;
-                self.divide_registers(left_reg, right_reg)
-            }
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Unsupported or invalid operation",
-            )),
-        }
-    }
 }
 
 
@@ -209,9 +157,11 @@ impl<W: std::io::Write> ARM64Writer<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scan::Token;
     use std::fs;
     use std::fs::File;
     use std::io::{BufWriter, Cursor};
+
 
     // Helper function to create a simple AST node
     fn create_int_node(value: i32) -> ASTNode {
