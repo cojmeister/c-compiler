@@ -169,7 +169,7 @@ impl ASTNode {
     /// ## *For testing only!*
     /// Helper method to test_evaluate the AST (for testing)
     /// Will test_evaluate the AST
-    pub(crate) fn test_evaluate(&self) -> Result<i32, ASTError> {
+    fn test_evaluate(&self) -> Result<i32, ASTError> {
         match &self.operation {
             Token::INT(n) => Ok(*n),
             Token::PLUS => {

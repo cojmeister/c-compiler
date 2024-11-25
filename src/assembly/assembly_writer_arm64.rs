@@ -190,7 +190,7 @@ impl<W: std::io::Write> WriteAssembly for ARM64Writer<W> {
 
 // Example usage
 impl<W: std::io::Write> ARM64Writer<W> {
-    fn compile_ast(&mut self, ast: &ASTNode) -> IoResult<()> {
+    pub fn compile_ast(&mut self, ast: &ASTNode) -> IoResult<()> {
         // Generate assembly from the root of the AST
         let result_reg = self.generate_assembly_from_ast(ast)?;
 
