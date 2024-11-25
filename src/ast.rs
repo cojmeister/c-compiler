@@ -207,6 +207,20 @@ impl ASTNode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    #[test]
+    fn test_get_precedence_enf_of_line() {
+        let token = Token::EndOfLine;
+        let err = ASTNode::get_precedence(&token).err().unwrap();
+        assert_eq!(err, ASTError::ExpectedOperator);
+    }
+    
+    #[test]
+    fn test_get_precedence_enf_of_file() {
+        let token = Token::INT(0);
+        let actual_precedence = ASTNode::get_precedence(&token).unwrap();
+        assert_eq!(actual_precedence, 0);
+    }
 
     #[test]
     fn test_simple_addition() {
@@ -218,6 +232,30 @@ mod tests {
 
         let ast = ASTNode::parse(tokens).unwrap();
         assert_eq!(ast.test_evaluate().unwrap(), 8);
+    }
+    
+    #[test]
+    fn test_simple_subtraction() {
+        let tokens = vec![
+            Ok(Token::INT(5)),
+            Ok(Token::MINUS),
+            Ok(Token::INT(3)),
+        ];
+
+        let ast = ASTNode::parse(tokens).unwrap();
+        assert_eq!(ast.test_evaluate().unwrap(), 2);
+    }
+    
+    #[test]
+    fn test_simple_division() {
+        let tokens = vec![
+            Ok(Token::INT(9)),
+            Ok(Token::SLASH),
+            Ok(Token::INT(3)),
+        ];
+
+        let ast = ASTNode::parse(tokens).unwrap();
+        assert_eq!(ast.test_evaluate().unwrap(), 3);
     }
 
     #[test]

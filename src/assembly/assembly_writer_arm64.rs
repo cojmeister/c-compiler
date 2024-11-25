@@ -211,7 +211,7 @@ mod tests {
     use super::*;
     use std::fs;
     use std::fs::File;
-    use std::io::{BufWriter};
+    use std::io::{BufWriter, Cursor};
 
     // Helper function to create a simple AST node
     fn create_int_node(value: i32) -> ASTNode {
@@ -230,6 +230,51 @@ mod tests {
             right: Some(Box::new(right)),
         }
     }
+
+    #[test]
+    fn test_format_register() {
+        let output = Cursor::new(Vec::<u8>::new());
+        let writer = ARM64Writer::new(output);
+
+        assert_eq!(writer.format_register(&RegisterList::R4), "x4");
+        assert_eq!(writer.format_register(&RegisterList::R3), "x3");
+    }
+
+
+    fn setup_writer() -> (ARM64Writer<BufWriter<Cursor<Vec<u8>>>>, Cursor<Vec<u8>>) {
+        let output = Cursor::new(Vec::new());
+        let writer = ARM64Writer::new(BufWriter::new(output.clone()));
+        (writer, output)
+    }
+
+    #[test]
+    fn test_register_allocation_and_free() {
+        let (mut writer, _) = setup_writer();
+
+        // Allocate all registers
+        let r0 = writer.allocate_register();
+        let r1 = writer.allocate_register();
+        let r2 = writer.allocate_register();
+
+        assert_eq!(r0, RegisterList::R0);
+        assert_eq!(r1, RegisterList::R1);
+        assert_eq!(r2, RegisterList::R2);
+
+        // Free a register and reallocate
+        writer.free_register(r1.clone());
+        let r1_reallocated = writer.allocate_register();
+        assert_eq!(r1, r1_reallocated);
+
+        // Ensure no registers are left
+        writer.allocate_register(); // R3
+        writer.allocate_register(); // R4
+        assert!(writer.available_registers.is_empty());
+
+        // Free all registers
+        writer.free_all_registers();
+        assert_eq!(writer.available_registers.len(), 5);
+    }
+    
 
     // Test for simple integer loading
     #[test]
@@ -385,6 +430,6 @@ mod tests {
         if fs::metadata(filename).is_ok() {
             fs::remove_file(filename).unwrap();
         }
-        
+
     }
 }
