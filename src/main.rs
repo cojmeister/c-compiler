@@ -1,6 +1,8 @@
+use crate::assembly::assembly_writer_arm64::ARM64Writer;
 use crate::ast::ASTNode;
 use crate::scan::scan_file;
 use std::io;
+use std::io::BufWriter;
 
 mod scan;
 mod ast;
@@ -25,10 +27,12 @@ fn main() -> io::Result<()> {
         }
     }
 
-    match ASTNode::parse(tokens).unwrap().test_evaluate() {
-        Ok(result) => println!("The evaluated expression gives: {:#?}", result),
-        Err(err) => println!("The expression return error: {:#?}", err),
-    }
+    let node = ASTNode::parse(tokens).unwrap();
+    let file = BufWriter::new(File::create("scanner_example.out").unwrap());
+
+    let mut writer = ARM64Writer::new(file);
+
+    writer.compile_ast(&node).expect("Failed to write Assembly");
 
 
     Ok(())
