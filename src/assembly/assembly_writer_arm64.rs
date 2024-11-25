@@ -1,22 +1,20 @@
 use crate::assembly::{AssemblyWriter, RegisterList, SupportedArchitectures, WriteAssembly};
 use crate::ast::ASTNode;
 use crate::scan::Token;
-use std::fs::File;
 use std::io::{BufWriter, Result as IoResult, Write};
 
 // ARM64-specific implementation
-pub struct ARM64Writer {
-    writer: AssemblyWriter,
+pub struct ARM64Writer<W: Write> {
+    writer: AssemblyWriter<W>,
     available_registers: Vec<RegisterList>, // Track available registers
 }
 
-impl ARM64Writer {
-    pub fn new(file: BufWriter<File>, ast: ASTNode) -> Self {
+impl<W: Write> ARM64Writer<W> {
+    pub fn new(writer: W) -> Self {
         Self {
             writer: AssemblyWriter {
-                file,
+                file: BufWriter::new(writer),
                 architecture: SupportedArchitectures::ARM64,
-                abstract_syntax_tree: ast,
             },
             available_registers: vec![
                 RegisterList::R4,
@@ -30,7 +28,7 @@ impl ARM64Writer {
 }
 
 
-impl WriteAssembly for ARM64Writer {
+impl<W: std::io::Write> WriteAssembly for ARM64Writer<W> {
     // Helper method for register formatting
     fn format_register(&self, register: &RegisterList) -> String {
         match register {
@@ -191,7 +189,7 @@ impl WriteAssembly for ARM64Writer {
 
 
 // Example usage
-impl ARM64Writer {
+impl<W: std::io::Write> ARM64Writer<W> {
     fn compile_ast(&mut self, ast: &ASTNode) -> IoResult<()> {
         // Generate assembly from the root of the AST
         let result_reg = self.generate_assembly_from_ast(ast)?;
@@ -202,16 +200,18 @@ impl ARM64Writer {
         // Free the final result register
         self.free_register(result_reg);
 
+        self.writer.file.flush()?;
+
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
-    use std::io::Read;
+    use std::fs::File;
+    use std::io::{BufWriter};
 
     // Helper function to create a simple AST node
     fn create_int_node(value: i32) -> ASTNode {
@@ -234,111 +234,132 @@ mod tests {
     // Test for simple integer loading
     #[test]
     fn test_integer_loading() {
-        let file = BufWriter::new(File::create("test_int_load.s").unwrap());
+        let filename = "test_int_load.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
         let ast = create_int_node(42);
 
-        let mut writer = ARM64Writer::new(file, ast.clone());
+        let mut writer = ARM64Writer::new(file);
         writer.compile_ast(&ast).unwrap();
 
         // Read generated assembly
-        let mut file_content = String::new();
-        File::open("test_int_load.s").unwrap().read_to_string(&mut file_content).unwrap();
+        let file_content = fs::read_to_string(filename).unwrap();
 
         assert!(file_content.contains("mov x0, #42"));
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
     }
 
     // Test for addition
     #[test]
     fn test_addition() {
-        let file = BufWriter::new(File::create("test_addition.s").unwrap());
+        let filename = "test_addition.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
         let ast = create_op_node(
             Token::PLUS,
             create_int_node(10),
             create_int_node(20),
         );
 
-        let mut writer = ARM64Writer::new(file, ast.clone());
+        let mut writer = ARM64Writer::new(file);
         writer.compile_ast(&ast).unwrap();
 
         // Read generated assembly
-        let mut file_content = String::new();
-        File::open("test_addition.s").unwrap().read_to_string(&mut file_content).unwrap();
+        let file_content = fs::read_to_string(filename).unwrap();
 
         assert!(file_content.contains("mov x0, #10"));
         assert!(file_content.contains("mov x1, #20"));
         assert!(file_content.contains("add"));
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
     }
 
     // Test for subtraction
     #[test]
     fn test_subtraction() {
-        let file = BufWriter::new(File::create("test_subtraction.s").unwrap());
+        let filename = "test_subtraction.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
         let ast = create_op_node(
             Token::MINUS,
             create_int_node(30),
             create_int_node(15),
         );
 
-        let mut writer = ARM64Writer::new(file, ast.clone());
+        let mut writer = ARM64Writer::new(file);
         writer.compile_ast(&ast).unwrap();
 
         // Read generated assembly
-        let mut file_content = String::new();
-        File::open("test_subtraction.s").unwrap().read_to_string(&mut file_content).unwrap();
+        let file_content = fs::read_to_string(filename).unwrap();
 
         assert!(file_content.contains("mov x0, #30"));
         assert!(file_content.contains("mov x1, #15"));
         assert!(file_content.contains("sub"));
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
     }
 
     // Test for multiplication
     #[test]
     fn test_multiplication() {
-        let file = BufWriter::new(File::create("test_multiplication.s").unwrap());
+        let filename = "test_multiplication.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
         let ast = create_op_node(
             Token::ASTERISK,
             create_int_node(5),
             create_int_node(7),
         );
 
-        let mut writer = ARM64Writer::new(file, ast.clone());
+        let mut writer = ARM64Writer::new(file);
         writer.compile_ast(&ast).unwrap();
 
         // Read generated assembly
-        let mut file_content = String::new();
-        File::open("test_multiplication.s").unwrap().read_to_string(&mut file_content).unwrap();
+        let file_content = fs::read_to_string(filename).unwrap();
 
         assert!(file_content.contains("mov x0, #5"));
         assert!(file_content.contains("mov x1, #7"));
         assert!(file_content.contains("mul"));
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
     }
 
     // Test for division
     #[test]
     fn test_division() {
-        let file = BufWriter::new(File::create("test_division.s").unwrap());
+        let filename = "test_division.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
         let ast = create_op_node(
             Token::SLASH,
             create_int_node(20),
             create_int_node(4),
         );
 
-        let mut writer = ARM64Writer::new(file, ast.clone());
+        let mut writer = ARM64Writer::new(file);
         writer.compile_ast(&ast).unwrap();
 
         // Read generated assembly
-        let mut file_content = String::new();
-        File::open("test_division.s").unwrap().read_to_string(&mut file_content).unwrap();
+        let file_content = fs::read_to_string(filename).unwrap();
 
         assert!(file_content.contains("mov x0, #20"));
         assert!(file_content.contains("mov x1, #4"));
         assert!(file_content.contains("udiv"));
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
     }
 
     // Test for complex nested expression (5 + 3) * 2
     #[test]
     fn test_nested_expression() {
-        let file = BufWriter::new(File::create("test_nested.s").unwrap());
+        let filename = "test_nested.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
         let ast = create_op_node(
             Token::ASTERISK,
             create_op_node(
@@ -349,36 +370,21 @@ mod tests {
             create_int_node(2),
         );
 
-        let mut writer = ARM64Writer::new(file, ast.clone());
+        let mut writer = ARM64Writer::new(file);
         writer.compile_ast(&ast).unwrap();
 
         // Read generated assembly
-        let file_content = fs::read_to_string("test_nested.s").unwrap();
-        // File::open("test_nested.s").unwrap().read_to_string(&mut file_content).unwrap();
+        let file_content = fs::read_to_string(filename).unwrap();
 
         assert!(file_content.contains("mov x0, #5"));
         assert!(file_content.contains("mov x1, #3"));
-        assert!(file_content.contains("add"));
-        assert!(file_content.contains("mov x2, #2"));
-        assert!(file_content.contains("mul"));
-    }
+        assert!(file_content.contains("add x2, x0, x1"));
+        assert!(file_content.contains("mov x1, #2"));
+        assert!(file_content.contains("mul x0, x2, x1"));
 
-    // // Cleanup after tests
-    // #[test]
-    // fn cleanup_test_files() {
-    //     let test_files = [
-    //         "test_int_load.s",
-    //         "test_addition.s",
-    //         "test_subtraction.s",
-    //         "test_multiplication.s",
-    //         "test_division.s",
-    //         "test_nested.s"
-    //     ];
-    // 
-    //     for file in test_files.iter() {
-    //         if fs::metadata(file).is_ok() {
-    //             fs::remove_file(file).unwrap();
-    //         }
-    //     }
-    // }
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
+        
+    }
 }

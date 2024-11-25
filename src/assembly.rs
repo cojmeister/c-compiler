@@ -1,14 +1,14 @@
 use crate::assembly::assembly_writer_arm64::ARM64Writer;
 use crate::ast::ASTNode;
 use std::fs::File;
-use std::io::{BufWriter, Result as IoResult};
+use std::io::{BufWriter, Result as IoResult, Write};
 pub mod assembly_writer_arm64;
 
 pub enum SupportedArchitectures {
     ARM64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RegisterList {
     R0,
     R1,
@@ -18,10 +18,9 @@ pub enum RegisterList {
 }
 
 
-pub struct AssemblyWriter {
-    file: BufWriter<File>,
+pub struct AssemblyWriter<W: Write> {
+    file: BufWriter<W>,
     architecture: SupportedArchitectures,
-    abstract_syntax_tree: ASTNode,
 }
 
 
@@ -44,10 +43,9 @@ pub trait WriteAssembly {
 pub fn create_assembly_writer(
     architecture: SupportedArchitectures,
     file: BufWriter<File>,
-    ast: ASTNode,
 ) -> Box<dyn WriteAssembly> {
     match architecture {
-        SupportedArchitectures::ARM64 => Box::new(ARM64Writer::new(file, ast)),
+        SupportedArchitectures::ARM64 => Box::new(ARM64Writer::new(file)),
         _ => todo!("Need to implement other Architectures!")
     }
 }
