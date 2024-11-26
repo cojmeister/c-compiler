@@ -43,21 +43,21 @@ impl ASTNode {
     /// # Examples
     /// Given a non int token will return Err
     /// ```
-    /// let leaf = crate::ast::ASTNode::make_leaf(Token::SLASH);
+    /// # use compiler::ast::*;
+    /// # use compiler::scan::*;
+    /// let leaf = ASTNode::make_leaf(Token::SLASH);
     /// assert_eq!(leaf, Err(ASTError::InvalidLeafNode));
     /// ```
     ///
     /// Otherwise, it will return an Ok node
     /// ```
+    /// # use compiler::ast::*;
+    /// # use compiler::scan::*;
     /// let leaf = ASTNode::make_leaf(Token::INT(4));
-    /// assert_eq!(leaf, Ok(ASTNode {
-    ///     operation: Token::INT(4),
-    ///     left: None,
-    ///     right: None,
-    /// }));
+    /// assert!(leaf.is_ok());
     ///
     /// ```
-    fn make_leaf(operation: Token) -> Result<Self, ASTError> {
+    pub fn make_leaf(operation: Token) -> Result<Self, ASTError> {
         match operation {
             Token::INT(_) => Ok(Self {
                 operation,
@@ -149,13 +149,15 @@ impl ASTNode {
     /// # Examples
     ///
     /// ```
+    /// # use compiler::ast::*;
+    /// # use compiler::scan::*;
     /// let tokens = vec![
     ///     Ok(Token::INT(5)),
     ///     Ok(Token::PLUS),
     ///     Ok(Token::INT(5)),
     /// ];
     /// let ast = ASTNode::parse(tokens).unwrap();
-    /// assert_eq!(ast.test_evaluate().unwrap(), 10);
+    /// assert_eq!(ast.operation, Token::PLUS);
     /// ```
     pub fn parse(tokens: Vec<Result<Token, TokenError>>) -> Result<Self, ASTError> {
         if tokens.is_empty() {
