@@ -1,6 +1,6 @@
 use crate::ast::ASTNode;
-use std::io::{BufWriter, Result as IoResult, Write};
 use crate::scan::Token;
+use std::io::{BufWriter, Result as IoResult, Write};
 
 pub mod assembly_writer_arm64;
 
@@ -85,4 +85,10 @@ trait WriteAssembly {
             )),
         }
     }
+
+    /// Method to write standard ARM64 macOS assembly headers
+    fn write_assembly_headers(&mut self) -> IoResult<()>;
+
+    /// Method to write exit syscall at the end of the program
+    fn write_exit_syscall(&mut self) -> IoResult<()>;
 }

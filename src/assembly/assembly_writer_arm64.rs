@@ -133,12 +133,39 @@ impl<W: std::io::Write> WriteAssembly for ARM64Writer<W> {
         self.free_register(reg_2);
         Ok(result_reg)
     }
+
+    fn write_assembly_headers(&mut self) -> IoResult<()> {
+        writeln!(self.writer.file, "// Auto-generated ARM64 assembly")?;
+        writeln!(self.writer.file, ".arch arm64")?;
+        writeln!(self.writer.file, ".text")?;
+        writeln!(self.writer.file, ".global _main")?;
+        writeln!(self.writer.file, ".align 2")?;
+        writeln!(self.writer.file, "")?;
+
+        // Start main function
+        writeln!(self.writer.file, "_main:")?;
+
+        Ok(())
+    }
+
+    fn write_exit_syscall(&mut self) -> IoResult<()> {
+        // Standard macOS ARM64 exit syscall
+        writeln!(self.writer.file, "")?;
+        writeln!(self.writer.file, "    // Exit program")?;
+        writeln!(self.writer.file, "    mov x0, #0           // Exit status 0")?;
+        writeln!(self.writer.file, "    mov x16, #1          // Exit syscall")?;
+        writeln!(self.writer.file, "    svc #0x80            // Make system call")?;
+
+        Ok(())
+    }
 }
 
 
 // Example usage
 impl<W: std::io::Write> ARM64Writer<W> {
     pub fn compile_ast(&mut self, ast: &ASTNode) -> IoResult<()> {
+        self.write_assembly_headers()?;
+        
         // Generate assembly from the root of the AST
         let result_reg = self.generate_assembly_from_ast(ast)?;
 
@@ -147,6 +174,8 @@ impl<W: std::io::Write> ARM64Writer<W> {
 
         // Free the final result register
         self.free_register(result_reg);
+
+        self.write_assembly_headers()?;
 
         self.writer.file.flush()?;
 
@@ -381,5 +410,52 @@ mod tests {
             fs::remove_file(filename).unwrap();
         }
 
+    }
+
+    #[test]
+    fn test_write_assembly_headers() {
+        let filename = "test_headers.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
+
+        let mut writer = ARM64Writer::new(file);
+        writer.write_assembly_headers().unwrap();
+        writer.writer.file.flush().unwrap();
+
+        // Read generated assembly
+        let file_content = fs::read_to_string(filename).unwrap();
+
+        // Check for standard headers
+        assert!(file_content.contains(".arch arm64"), "Missing architecture directive");
+        assert!(file_content.contains(".text"), "Missing text section directive");
+        assert!(file_content.contains(".global _main"), "Missing global main directive");
+        assert!(file_content.contains("_main:"), "Missing main label");
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
+    }
+    
+    #[test]
+    fn test_write_exit_syscall() {
+        let filename = "test_exit_syscall.s";
+        let file = BufWriter::new(File::create(filename).unwrap());
+
+        let mut writer = ARM64Writer::new(file);
+        writer.write_exit_syscall().unwrap();
+        writer.writer.file.flush().unwrap();
+
+        // Read generated assembly
+        let file_content = fs::read_to_string(filename).unwrap();
+
+        // Check for standard headers
+        assert!(file_content.contains("    // Exit program"), "Missing exit comment");
+        assert!(file_content.contains("    mov x0, #0           // Exit status 0"), "Missing exit status");
+        assert!(file_content.contains("    mov x16, #1          // Exit syscall"), "Missing exit syscall");
+        assert!(file_content.contains("    svc #0x80            // Make system call"), "Missing system call");
+
+
+        if fs::metadata(filename).is_ok() {
+            fs::remove_file(filename).unwrap();
+        }
     }
 }
