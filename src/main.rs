@@ -28,7 +28,7 @@ fn main() -> io::Result<()> {
     }
 
     let node = ASTNode::parse(tokens).unwrap();
-    let file = BufWriter::new(File::create("scanner_example.out").unwrap());
+    let file = BufWriter::new(File::create("scanner_example.asm").unwrap());
 
     let mut writer = ARM64Writer::new(file);
 

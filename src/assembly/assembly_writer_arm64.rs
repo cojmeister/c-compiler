@@ -136,7 +136,6 @@ impl<W: std::io::Write> WriteAssembly for ARM64Writer<W> {
 
     fn write_assembly_headers(&mut self) -> IoResult<()> {
         writeln!(self.writer.file, "// Auto-generated ARM64 assembly")?;
-        writeln!(self.writer.file, ".arch arm64")?;
         writeln!(self.writer.file, ".text")?;
         writeln!(self.writer.file, ".global _main")?;
         writeln!(self.writer.file, ".align 2")?;
@@ -175,7 +174,7 @@ impl<W: std::io::Write> ARM64Writer<W> {
         // Free the final result register
         self.free_register(result_reg);
 
-        self.write_assembly_headers()?;
+        self.write_exit_syscall()?;
 
         self.writer.file.flush()?;
 
